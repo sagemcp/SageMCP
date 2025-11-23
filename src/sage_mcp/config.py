@@ -114,6 +114,11 @@ class Settings(BaseSettings):
         default=10, env="MCP_MAX_CONNECTIONS_PER_TENANT"
     )
 
+    # Image Registry Configuration
+    image_registry: Optional[str] = Field(
+        default="localhost:5000", env="IMAGE_REGISTRY"
+    )
+
     # Redis Configuration
     redis_url: Optional[str] = Field(
         default=None, env="REDIS_URL"

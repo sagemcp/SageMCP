@@ -6,7 +6,9 @@ import {
   Settings,
   HelpCircle,
   Menu,
-  X
+  X,
+  Store,
+  Package
 } from 'lucide-react'
 import { cn } from '@/utils/cn'
 import logo from '@/assets/logo.svg'
@@ -14,6 +16,8 @@ import logo from '@/assets/logo.svg'
 const navigation = [
   { name: 'Dashboard', href: '/', icon: Activity },
   { name: 'Tenants', href: '/tenants', icon: Building2 },
+  { name: 'Marketplace', href: '/marketplace', icon: Store },
+  { name: 'Installations', href: '/installations', icon: Package },
   { name: 'MCP Testing', href: '/mcp-test', icon: Settings },
 ]
 

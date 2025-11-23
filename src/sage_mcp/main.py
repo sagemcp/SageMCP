@@ -16,6 +16,7 @@ from .database.migrations import (
     upgrade_add_runtime_type_values,
     upgrade_add_process_status_values,
     upgrade_remove_connector_unique_constraint,
+    upgrade_add_mcp_server_registry,
 )
 
 # Import connectors to register them
@@ -40,6 +41,7 @@ async def lifespan(app: FastAPI):
     await upgrade_add_runtime_type_values()
     await upgrade_add_process_status_values()
     await upgrade_remove_connector_unique_constraint()
+    await upgrade_add_mcp_server_registry()
 
     # Warm up HTTP client (creates connection pool)
     from .connectors.http_client import get_http_client
@@ -111,6 +113,7 @@ def create_app() -> FastAPI:
                 "api": {
                     "admin": "/api/v1/admin",
                     "oauth": "/api/v1/oauth",
+                    "registry": "/api/v1/registry",
                     "mcp": "/api/v1/{tenant_slug}/mcp"
                 }
             },

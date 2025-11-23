@@ -6,6 +6,7 @@ from sqlalchemy import text
 from ..models.base import Base
 from ..models.connector_tool_state import ConnectorToolState
 from ..models.mcp_process import MCPProcess
+from ..models.mcp_server_registry import MCPServerRegistry, DiscoveryJob, MCPInstallation
 from .connection import db_manager
 
 
@@ -289,3 +290,96 @@ async def upgrade_remove_connector_unique_constraint(engine: AsyncEngine = None)
             print("✓ Dropped unique constraint uq_tenant_connector_type from connectors table")
         else:
             print("✓ Unique constraint uq_tenant_connector_type does not exist")
+
+
+async def upgrade_add_mcp_server_registry(engine: AsyncEngine = None):
+    """Migration: Add MCP Server Registry tables for discovery and marketplace.
+
+    This migration adds three new tables:
+    1. mcp_server_registry - Catalog of discovered MCP servers from NPM, GitHub, etc.
+    2. discovery_jobs - Track background discovery job status
+    3. mcp_installations - Track per-tenant MCP server installations
+
+    Also adds new columns to connectors table:
+    - registry_id: Link to mcp_server_registry for installed servers
+    - installed_version: Track installed version
+
+    Safe to run on existing databases - checks if tables/columns exist first.
+    """
+    if engine is None:
+        if not db_manager.engine:
+            db_manager.initialize()
+        engine = db_manager.engine
+
+    async with engine.begin() as conn:
+        # Check if mcp_server_registry table exists
+        result = await conn.execute(text(
+            "SELECT EXISTS (SELECT FROM information_schema.tables "
+            "WHERE table_schema = 'public' AND table_name = 'mcp_server_registry')"
+        ))
+        registry_exists = result.scalar()
+
+        if not registry_exists:
+            # Create mcp_server_registry table
+            await conn.run_sync(
+                lambda sync_conn: MCPServerRegistry.__table__.create(
+                    sync_conn, checkfirst=True
+                )
+            )
+            print("✓ Created mcp_server_registry table")
+        else:
+            print("✓ mcp_server_registry table already exists")
+
+        # Check if discovery_jobs table exists
+        result = await conn.execute(text(
+            "SELECT EXISTS (SELECT FROM information_schema.tables "
+            "WHERE table_schema = 'public' AND table_name = 'discovery_jobs')"
+        ))
+        jobs_exists = result.scalar()
+
+        if not jobs_exists:
+            # Create discovery_jobs table
+            await conn.run_sync(
+                lambda sync_conn: DiscoveryJob.__table__.create(
+                    sync_conn, checkfirst=True
+                )
+            )
+            print("✓ Created discovery_jobs table")
+        else:
+            print("✓ discovery_jobs table already exists")
+
+        # Check if mcp_installations table exists
+        result = await conn.execute(text(
+            "SELECT EXISTS (SELECT FROM information_schema.tables "
+            "WHERE table_schema = 'public' AND table_name = 'mcp_installations')"
+        ))
+        installations_exists = result.scalar()
+
+        if not installations_exists:
+            # Create mcp_installations table
+            await conn.run_sync(
+                lambda sync_conn: MCPInstallation.__table__.create(
+                    sync_conn, checkfirst=True
+                )
+            )
+            print("✓ Created mcp_installations table")
+        else:
+            print("✓ mcp_installations table already exists")
+
+        # Add registry_id and installed_version columns to connectors table
+        result = await conn.execute(text(
+            "SELECT EXISTS (SELECT FROM information_schema.columns "
+            "WHERE table_schema = 'public' AND table_name = 'connectors' "
+            "AND column_name = 'registry_id')"
+        ))
+        registry_id_exists = result.scalar()
+
+        if not registry_id_exists:
+            await conn.execute(text(
+                "ALTER TABLE connectors "
+                "ADD COLUMN registry_id UUID, "
+                "ADD COLUMN installed_version VARCHAR(50)"
+            ))
+            print("✓ Added registry_id and installed_version columns to connectors table")
+        else:
+            print("✓ registry_id column already exists in connectors table")
